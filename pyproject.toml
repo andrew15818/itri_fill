@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "itri-fill"
+version = "0.1.0"
+description = "Fill in necessary fields for ITRI iCAP expert reports"
+authors = ["Andres Ponce <andreseeponce@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+txt2docx = "^1.0.2"
+docx = "^0.2.4"
+python-docx = "^1.1.2"
+asyncio = "^3.4.3"
+watchdog = "^5.0.2"
+
+[tool.poetry.group.dev.dependencies]
+docx = "^0.2.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
