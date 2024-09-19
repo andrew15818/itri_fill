@@ -55,28 +55,37 @@ def format_receipt_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
     """
     formatted = []
     for index, row in data.iterrows():
+        date = convert_date_to_chinese(row["會議日期"].strftime("%Y-%m-%d"))
         formatted_row = {
             "領款人簽章(正楷)：姓名": f"領款人簽章(正楷)：{row['姓名']}",
             "聯絡電話：電話": f"聯絡電話：{row['手機']}",
-            "Date": f"{row['會議日期']}",
+            "Date": f"{date}",
             "中華民國國籍：身分證統一編號　ID": f"中華民國國籍：身分證統一編號 {row['身分證字號']}",
+            "住址：": f"住址:{row['郵遞區號-通訊地址']}",
         }
         formatted.append(formatted_row)
     return formatted
 
 
-def convert_date_to_chinese(date: str) -> str:
+def convert_date_to_chinese(date: str, separator:str = None) -> str:
     """
     Take a DateTime object and format it to Taiwanese format.
     Args:
         date (datetime.TimeStamp): DateTime object with needed date
+        separator (str): Character separating the items in a date, e.g. "113.12.25", default "年月日"
     Returns:
         (str) containing the time converted to Taiwanese time (e.g 1998/03/29 -> 87年03月29日)
     """
+    if separator:
+        year = month = separator
+        day = ""
+    else:
+        year, month, day = "年", "月", "日"
+
     dates = date.split("-")
     assert len(dates) == 3, "Not enough values in the date."
     roc_year = int(dates[0]) - TAIWAN_DATE_OFFSET
-    return f"{roc_year}年{dates[1]}月{dates[2]}日"
+    return f"{roc_year}{year}{dates[1]}{month}{dates[2]}{day}"
 
 
 def search_and_replace_expert_info(
@@ -98,7 +107,12 @@ def search_and_replace_expert_info(
         for par in doc.paragraphs:
             for keyword, value in user.items():
                 if keyword in par.text:
-                    par.text = par.text.replace(keyword, value)
+                    # Place all the text in a single run, see if formatting kept
+                    to_replace = par.text.replace(keyword, value)
+
+                    for run in par.runs:
+                        run.text = ""
+                    par.runs[0].text = to_replace
         modified_docs.append(doc)
     return modified_docs
 
@@ -112,7 +126,7 @@ def format_signature_sheet_fill_in_data(data: pd.DataFrame) -> Dict[str, str]:
     date = convert_date_to_chinese(row["會議日期"].strftime("%Y-%m-%d"))
     formatted = {
         "貳、時間：Date": f"貳、時間：{date}",
-        "肆、審查案件：Number": f"肆、審查案件：{row['案號']}",
+        "肆、審查案件：Number": f"肆、審查案件：{row['案號'] + " " + row['課程名稱']}",
     }
     return formatted
 
@@ -150,17 +164,23 @@ def edit_signature_sheet(data: pd.DataFrame):
     """
     formatted = format_signature_sheet_fill_in_data(data)
     doc = search_and_replace_expert_info(SIGNATURE_DOC, [formatted])
+    print_fonts(doc[0])
     table = doc[0].tables[0]
-
-    # TODO: See if you can center the text
+    # TODO: Sort the chinese characters by stroke count (only first character in (現職單位)
     for idx, expert in data.iterrows():
-        if idx == data.shape[0] - 1:
-            break
         row = table.rows[idx + 1].cells  # Offset header row
-        row[1].text = expert["單位名稱"]
-        row[2].text = expert["職稱"]
-        row[3].text = expert["姓名"]
-    doc[0].save("data/簽到表_test.docx")
+        row[1].paragraphs[0].add_run(expert["現職單位"])
+        row[2].text = expert["職稱"]  # Center
+        row[3].paragraphs[0].add_run(expert["姓名"])
+
+    # Print date on the bottom table
+    date = data.iloc[0]["會議日期"].strftime("%Y-%m-%d")
+    conv_date = convert_date_to_chinese(date, separator=".")
+    table = doc[0].tables[1]
+    table.rows[0].cells[3].text = conv_date
+
+    case = data.iloc[0]["案號"]
+    doc[0].save(f"data/{case}_簽到表.docx")
 
 
 def main():
@@ -173,8 +193,8 @@ def main():
     expert_info = pd.read_excel(EXPERT_LIST)
     logger.info(f"Loaded {EXPERT_LIST}")
 
-    # edit_contract(expert_info)
-    # edit_receipt(expert_info)
+    edit_contract(expert_info)
+    edit_receipt(expert_info)
     edit_signature_sheet(expert_info)
 
 
