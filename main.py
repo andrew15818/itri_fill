@@ -1,18 +1,18 @@
-import sys
-import asyncio
 import logging
+from datetime import datetime
+from typing import Dict, List
+
 import docx
 import pandas as pd
-from datetime import datetime
-from typing import List, Dict
 
 from config import (
-    EXPERT_LIST,
     CONTRACT_DOC,
+    EXPERT_LIST,
     RECEIPT_DOC,
     SIGNATURE_DOC,
     TAIWAN_DATE_OFFSET,
 )
+from fs_monitor import init_fs_handler
 
 
 def init_logger(filename: str = "logs/logs.log") -> logging.RootLogger:
@@ -67,7 +67,7 @@ def format_receipt_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
     return formatted
 
 
-def convert_date_to_chinese(date: str, separator:str = None) -> str:
+def convert_date_to_chinese(date: str, separator: str = None) -> str:
     """
     Take a DateTime object and format it to Taiwanese format.
     Args:
@@ -164,20 +164,19 @@ def edit_signature_sheet(data: pd.DataFrame):
     """
     formatted = format_signature_sheet_fill_in_data(data)
     doc = search_and_replace_expert_info(SIGNATURE_DOC, [formatted])
-    print_fonts(doc[0])
     table = doc[0].tables[0]
     # TODO: Sort the chinese characters by stroke count (only first character in (現職單位)
     for idx, expert in data.iterrows():
         row = table.rows[idx + 1].cells  # Offset header row
-        row[1].paragraphs[0].add_run(expert["現職單位"])
-        row[2].text = expert["職稱"]  # Center
-        row[3].paragraphs[0].add_run(expert["姓名"])
+        row[1].paragraphs[0].runs[0].text = expert["現職單位"]
+        row[2].paragraphs[0].runs[0].text = expert["職稱"]  # Center
+        row[3].paragraphs[0].runs[0].text = expert["姓名"]
 
     # Print date on the bottom table
     date = data.iloc[0]["會議日期"].strftime("%Y-%m-%d")
     conv_date = convert_date_to_chinese(date, separator=".")
     table = doc[0].tables[1]
-    table.rows[0].cells[3].text = conv_date
+    table.rows[0].cells[3].paragraphs[0].runs[0].text = conv_date
 
     case = data.iloc[0]["案號"]
     doc[0].save(f"data/{case}_簽到表.docx")
@@ -199,4 +198,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    init_fs_handler(main)
