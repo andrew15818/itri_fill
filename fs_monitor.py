@@ -1,9 +1,11 @@
 import os
 from typing import Callable, Dict
+
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from config import TARGET_DIR, TARGET_FILE
+
 
 class TriggerPipelineOnInsert(FileSystemEventHandler):
     def __init__(self, callback: Callable, args: Dict):
@@ -46,4 +48,4 @@ def init_fs_handler(callback: Callable, args:dict = {}):
 
 
 if __name__ == "__main__":
-    init_fs_handler()
+    init_fs_handler(lambda x: print(x))
