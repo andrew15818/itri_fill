@@ -1,10 +1,10 @@
 import logging
-from docxcompose.composer import Composer
 from datetime import datetime
 from typing import Dict, List
 
 import docx
 import pandas as pd
+from docxcompose.composer import Composer
 
 from config import (
     CONTRACT_DOC,
@@ -12,6 +12,7 @@ from config import (
     RECEIPT_DOC,
     SIGNATURE_DOC,
     TAIWAN_DATE_OFFSET,
+    TARGET_DIR,
 )
 from fs_monitor import init_fs_handler
 
@@ -20,6 +21,17 @@ def init_logger(filename: str = "logs/logs.log") -> logging.RootLogger:
     logger = logging.getLogger(__name__)
     logging.basicConfig(filename=filename, encoding="utf-8", level=logging.DEBUG)
     return logger
+
+
+def merge_col_to_string(col: pd.Series, sep="_") -> str:
+    """
+    Merge pandas series values into single string.
+    Args:
+        col (pd.Series): Column values to return as single string
+    Returns:
+        Str containing values (e.g. Series[1, 2, 3] -> "1_2_3")
+    """
+    return sep.join(col.values)
 
 
 def compose_save(docs: List[docx.Document], filename: str):
@@ -34,7 +46,9 @@ def compose_save(docs: List[docx.Document], filename: str):
     for doc in docs:
         if composer is None:
             composer = Composer(doc)
+            master = doc
         else:
+            master.add_page_break()
             composer.append(doc)
     composer.save(filename)
 
@@ -156,9 +170,9 @@ def edit_contract(data: pd.DataFrame):
     """
 
     formatted = format_contract_fill_in_data(data)
-    documents = search_and_replace_expert_info(CONTRACT_DOC, formatted)
-    for idx, doc in enumerate(documents):
-        doc.save(f"data/切結書_{data.iloc[idx]['姓名']}.docx")
+    docs = search_and_replace_expert_info(CONTRACT_DOC, formatted)
+
+    compose_save(docs, f"data/{merge_col_to_string(data["姓名"])}_切結書.docx")
 
 
 def edit_receipt(data: pd.DataFrame):
@@ -169,8 +183,8 @@ def edit_receipt(data: pd.DataFrame):
     """
     formatted = format_receipt_fill_in_data(data)
     docs = search_and_replace_expert_info(RECEIPT_DOC, formatted)
-    for idx, doc in enumerate(docs):
-        doc.save(f"data/領據_{data.iloc[idx]["姓名"]}.docx")
+
+    compose_save(docs, f"data/{merge_col_to_string(data["姓名"])}_領據.docx")
 
 
 def edit_signature_sheet(data: pd.DataFrame):
@@ -216,10 +230,9 @@ def main():
 
 # TODO: Font
 # TODO: Make sure font in receipt is consistent size
-# TODO: Mix the three files into a single one
 if __name__ == "__main__":
     logger = init_logger()
-    run_pipeline = False
+    run_pipeline = True
     if run_pipeline:
         main()
     else:
