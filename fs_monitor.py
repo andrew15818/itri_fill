@@ -1,7 +1,9 @@
+import os
 from typing import Callable, Dict
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
+from config import TARGET_DIR, TARGET_FILE
 
 class TriggerPipelineOnInsert(FileSystemEventHandler):
     def __init__(self, callback: Callable, args: Dict):
@@ -16,10 +18,9 @@ class TriggerPipelineOnInsert(FileSystemEventHandler):
         """
         filename = event.src_path
         encoded = filename.encode("utf-8").decode("utf-8")
-        #print(
-        #    f"type: {event.event_type}\t  is directory: {event.is_directory}\t is synthetic: {event.is_synthetic}\t src path: {event.src_path}"
-        #)
-        if not event.is_directory and encoded == "./data\\iCAP會議套印資料_test.xlsx":
+        # TODO: Allow for different excel filenames?
+        target_file = os.path.join(TARGET_DIR, TARGET_FILE)
+        if not event.is_directory and encoded == target_file:
             print("File modified!")
             self.callback(**self.args)
 

@@ -1,4 +1,5 @@
 import logging
+from docxcompose.composer import Composer
 from datetime import datetime
 from typing import Dict, List
 
@@ -19,6 +20,23 @@ def init_logger(filename: str = "logs/logs.log") -> logging.RootLogger:
     logger = logging.getLogger(__name__)
     logging.basicConfig(filename=filename, encoding="utf-8", level=logging.DEBUG)
     return logger
+
+
+def compose_save(docs: List[docx.Document], filename: str):
+    """
+    Combine the documents into a single word file and save.
+    Args:
+        docs (List[docx.Document]): List of edited Word documents.
+        filename (str): Location to save the merged doc.
+    """
+    assert len(docs) >= 1, "Empty document list, make sure at least 1!"
+    composer = None
+    for doc in docs:
+        if composer is None:
+            composer = Composer(doc)
+        else:
+            composer.append(doc)
+    composer.save(filename)
 
 
 def format_contract_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
@@ -60,8 +78,8 @@ def format_receipt_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
             "領款人簽章(正楷)：姓名": f"領款人簽章(正楷)：{row['姓名']}",
             "聯絡電話：電話": f"聯絡電話：{row['手機']}",
             "Date": f"{date}",
-            "中華民國國籍：身分證統一編號　ID": f"中華民國國籍：身分證統一編號 {row['身分證字號']}",
             "住址：": f"住址:{row['郵遞區號-通訊地址']}",
+            "█ 中華民國國籍：身分證統一編號　ID": f"█ 中華民國國籍：身分證統一編號 {row['身分證字號']}",
         }
         formatted.append(formatted_row)
     return formatted
@@ -107,12 +125,11 @@ def search_and_replace_expert_info(
         for par in doc.paragraphs:
             for keyword, value in user.items():
                 if keyword in par.text:
-                    # Place all the text in a single run, see if formatting kept
                     to_replace = par.text.replace(keyword, value)
-
                     for run in par.runs:
                         run.text = ""
                     par.runs[0].text = to_replace
+
         modified_docs.append(doc)
     return modified_docs
 
@@ -197,5 +214,13 @@ def main():
     edit_signature_sheet(expert_info)
 
 
+# TODO: Font
+# TODO: Make sure font in receipt is consistent size
+# TODO: Mix the three files into a single one
 if __name__ == "__main__":
-    init_fs_handler(main)
+    logger = init_logger()
+    run_pipeline = False
+    if run_pipeline:
+        main()
+    else:
+        init_fs_handler(main)

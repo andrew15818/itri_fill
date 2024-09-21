@@ -9,5 +9,5 @@ RECEIPT_DOC = os.environ["RECEIPT_DOC"]
 SIGNATURE_DOC = os.environ["SIGNATURE_DOC"]
 TAIWAN_DATE_OFFSET = int(os.environ["TAIWAN_DATE_OFFSET"])
 
-# Maybe just the parts after the colon?
-CONTRACT_WORDS = ["意於年月日", "申請案號：案號", "課程名稱：課程全名", "單位名稱：單位全名"]
+TARGET_DIR = os.environ["TARGET_DIR"]
+TARGET_FILE = os.environ["TARGET_FILE"]
