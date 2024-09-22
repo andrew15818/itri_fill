@@ -99,6 +99,7 @@ def format_receipt_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
     return formatted
 
 
+# TODO: Remove leading zeros for month day
 def convert_date_to_chinese(date: str, separator: str = None) -> str:
     """
     Take a DateTime object and format it to Taiwanese format.
@@ -117,6 +118,9 @@ def convert_date_to_chinese(date: str, separator: str = None) -> str:
     dates = date.split("-")
     assert len(dates) == 3, "Not enough values in the date."
     roc_year = int(dates[0]) - TAIWAN_DATE_OFFSET
+    # Remove **only** leading zeros from months, days
+    dates[1] = dates[1][1:] if dates[1][0] == "0" else dates[1]
+    dates[2] = dates[2][1:] if dates[2][0] == "0" else dates[2]
     return f"{roc_year}{year}{dates[1]}{month}{dates[2]}{day}"
 
 
@@ -172,7 +176,7 @@ def edit_contract(data: pd.DataFrame):
     formatted = format_contract_fill_in_data(data)
     docs = search_and_replace_expert_info(CONTRACT_DOC, formatted)
 
-    compose_save(docs, f"data/{merge_col_to_string(data["姓名"])}_切結書.docx")
+    compose_save(docs, f"data/{data.iloc[0]['案號']}_切結書.docx")
 
 
 def edit_receipt(data: pd.DataFrame):
@@ -184,7 +188,7 @@ def edit_receipt(data: pd.DataFrame):
     formatted = format_receipt_fill_in_data(data)
     docs = search_and_replace_expert_info(RECEIPT_DOC, formatted)
 
-    compose_save(docs, f"data/{merge_col_to_string(data["姓名"])}_領據.docx")
+    compose_save(docs, f"data/{data.iloc[0]['案號']}_領據.docx")
 
 
 def edit_signature_sheet(data: pd.DataFrame):
