@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime
 from typing import Dict, List
 
@@ -89,17 +90,16 @@ def format_receipt_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
     for index, row in data.iterrows():
         date = convert_date_to_chinese(row["會議日期"].strftime("%Y-%m-%d"))
         formatted_row = {
-            "領款人簽章(正楷)：姓名": f"領款人簽章(正楷)：{row['姓名']}",
-            "聯絡電話：電話": f"聯絡電話：{row['手機']}",
+            "姓名OOO": f"{row['姓名']}",
+            "電話OOOOOOOOOO": f"{row['手機']}",
             "Date": f"{date}",
-            "住址：": f"住址:{row['郵遞區號-通訊地址']}",
-            "█ 中華民國國籍：身分證統一編號　ID": f"█ 中華民國國籍：身分證統一編號 {row['身分證字號']}",
+            "住址：OOOOOOOOOOO": f"住址:{row['郵遞區號-通訊地址']}",
+            "中華民國國籍：身分證統一編號　IDOOOOOOOOOO": f"■ 中華民國國籍：身分證統一編號{row['身分證字號']}",
         }
         formatted.append(formatted_row)
     return formatted
 
 
-# TODO: Remove leading zeros for month day
 def convert_date_to_chinese(date: str, separator: str = None) -> str:
     """
     Take a DateTime object and format it to Taiwanese format.
@@ -159,8 +159,19 @@ def format_signature_sheet_fill_in_data(data: pd.DataFrame) -> Dict[str, str]:
     # Use data only from first expert, necessary fields should be the same for all
     row = data.iloc[0]
     date = convert_date_to_chinese(row["會議日期"].strftime("%Y-%m-%d"))
+    day_of_week = row["會議日期"].weekday()
+    weekday_mapping = {0: "一", 1: "二", 2: "三", 3: "四", 4: "五", 5: "六", 6: "日"}
+    hour = row["會議時間(24時)"].hour
+
+    time_of_day = "上"
+    if hour > 12:
+        hour -= 12
+        time_of_day = "下"
+    elif hour == 12:  # At 12, it's afternoon but we don't subtract 12
+        time_of_day = "下"
+
     formatted = {
-        "貳、時間：Date": f"貳、時間：{date}",
+        "貳、時間：Date": f"貳、時間：{date} ({weekday_mapping[day_of_week]}) {time_of_day}午{hour}時",
         "肆、審查案件：Number": f"肆、審查案件：{row['案號'] + " " + row['課程名稱']}",
     }
     return formatted
@@ -232,8 +243,6 @@ def main():
     edit_signature_sheet(expert_info)
 
 
-# TODO: Font
-# TODO: Make sure font in receipt is consistent size
 if __name__ == "__main__":
     logger = init_logger()
     run_pipeline = True
