@@ -1,10 +1,10 @@
-import os
+import time
 from typing import Callable, Dict
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from config import TARGET_DIR, TARGET_FILE
+from config import TARGET_DIR 
 
 
 class TriggerPipelineOnInsert(FileSystemEventHandler):
@@ -20,14 +20,14 @@ class TriggerPipelineOnInsert(FileSystemEventHandler):
         """
         filename = event.src_path
         encoded = filename.encode("utf-8").decode("utf-8")
-        # TODO: Allow for different excel filenames?
-        target_file = os.path.join(TARGET_DIR, TARGET_FILE)
-        if not event.is_directory and encoded == target_file:
+        # Check for *any* excel file dumped inside
+        if not event.is_directory and encoded.endswith(".xlsx"):
+            self.args["EXPERT_LIST"] = encoded
             print("File modified!")
             self.callback(**self.args)
 
 
-def init_fs_handler(callback: Callable, args:dict = {}):
+def init_fs_handler(callback: Callable, args: dict = {}):
     """
     Initialize the filesystem handler to run the `main()` function
     when a new file is inserted.
@@ -35,9 +35,10 @@ def init_fs_handler(callback: Callable, args:dict = {}):
         callback (Callable): Function to call when desired file modified.
         args (dict): callback arguments
     """
+    start = time.time()
     fs_handler = TriggerPipelineOnInsert(callback, args)
     observer = Observer()
-    observer.schedule(fs_handler, "./data", recursive=True)
+    observer.schedule(fs_handler, TARGET_DIR, recursive=True)
     observer.start()
 
     try:
@@ -45,6 +46,8 @@ def init_fs_handler(callback: Callable, args:dict = {}):
             observer.join(1)
     except KeyboardInterrupt:
         observer.stop()
+    end = time.time()
+    print(f"Finished in {end-start} secs.")
 
 
 if __name__ == "__main__":

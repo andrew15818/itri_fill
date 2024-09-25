@@ -1,3 +1,4 @@
+import os
 import logging
 import time
 from datetime import datetime
@@ -66,7 +67,7 @@ def format_contract_fill_in_data(data: pd.DataFrame) -> List[Dict[str, str]]:
     conv_date = convert_date_to_chinese(data.iloc[0]["會議日期"].strftime("%Y-%m-%d"))
     for index, row in data.iterrows():
         formatted_row = {
-            "意於年月日": conv_date,
+            "意於年月日": f"意於{conv_date}",
             "申請案號：案號": f"申請案號：{row['案號']}",
             "課程名稱：課程全名": f"課程名稱：{row['課程名稱']}",
             "單位名稱：單位全名": f"單位名稱：{row['單位名稱']}",
@@ -187,7 +188,7 @@ def edit_contract(data: pd.DataFrame):
     formatted = format_contract_fill_in_data(data)
     docs = search_and_replace_expert_info(CONTRACT_DOC, formatted)
 
-    compose_save(docs, f"data/{data.iloc[0]['案號']}_切結書.docx")
+    compose_save(docs, os.path.join(TARGET_DIR, f"{data.iloc[0]['案號']}_切結書.docx"))
 
 
 def edit_receipt(data: pd.DataFrame):
@@ -199,7 +200,7 @@ def edit_receipt(data: pd.DataFrame):
     formatted = format_receipt_fill_in_data(data)
     docs = search_and_replace_expert_info(RECEIPT_DOC, formatted)
 
-    compose_save(docs, f"data/{data.iloc[0]['案號']}_領據.docx")
+    compose_save(docs, os.path.join(TARGET_DIR, f"{data.iloc[0]['案號']}_領據.docx"))
 
 
 def edit_signature_sheet(data: pd.DataFrame):
@@ -211,7 +212,6 @@ def edit_signature_sheet(data: pd.DataFrame):
     formatted = format_signature_sheet_fill_in_data(data)
     doc = search_and_replace_expert_info(SIGNATURE_DOC, [formatted])
     table = doc[0].tables[0]
-    # TODO: Sort the chinese characters by stroke count (only first character in (現職單位)
     for idx, expert in data.iterrows():
         row = table.rows[idx + 1].cells  # Offset header row
         row[1].paragraphs[0].runs[0].text = expert["現職單位"]
@@ -225,27 +225,34 @@ def edit_signature_sheet(data: pd.DataFrame):
     table.rows[0].cells[3].paragraphs[0].runs[0].text = conv_date
 
     case = data.iloc[0]["案號"]
-    doc[0].save(f"data/{case}_簽到表.docx")
+    doc[0].save(os.path.join(TARGET_DIR, f"{case}_簽到表.docx"))
 
 
-def main():
-    """Initial function called on startup.
+def main(**kwargs):
+    """
+    Initial function called on startup.
     Process the Excel document and fill in the fields on
-    the required word docs."""
+    the required word docs.
+    """
+    start = time.time()
     logger = init_logger()
     logger.info(f"Starting program at {datetime.now()}")
 
-    expert_info = pd.read_excel(EXPERT_LIST)
-    logger.info(f"Loaded {EXPERT_LIST}")
+    expert_file = EXPERT_LIST if "EXPERT_LIST" not in kwargs else kwargs["EXPERT_LIST"]
+
+    expert_info = pd.read_excel(expert_file)
+    logger.info(f"Loaded {expert_file}")
 
     edit_contract(expert_info)
     edit_receipt(expert_info)
     edit_signature_sheet(expert_info)
+    end = time.time()
+    print(f"Finsihed in {end - start} sec.")
 
 
 if __name__ == "__main__":
     logger = init_logger()
-    run_pipeline = True
+    run_pipeline = False
     if run_pipeline:
         main()
     else:
