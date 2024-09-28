@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import time
 from datetime import datetime
@@ -22,6 +23,8 @@ from fs_monitor import init_fs_handler
 def init_logger(filename: str = "logs/logs.log") -> logging.RootLogger:
     logger = logging.getLogger(__name__)
     logging.basicConfig(filename=filename, encoding="utf-8", level=logging.DEBUG)
+    handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(handler)
     return logger
 
 
@@ -163,6 +166,7 @@ def format_signature_sheet_fill_in_data(data: pd.DataFrame) -> Dict[str, str]:
     day_of_week = row["會議日期"].weekday()
     weekday_mapping = {0: "一", 1: "二", 2: "三", 3: "四", 4: "五", 5: "六", 6: "日"}
     hour = row["會議時間(24時)"].hour
+    minute = row["會議時間(24時)"].minute
 
     time_of_day = "上"
     if hour > 12:
@@ -171,8 +175,14 @@ def format_signature_sheet_fill_in_data(data: pd.DataFrame) -> Dict[str, str]:
     elif hour == 12:  # At 12, it's afternoon but we don't subtract 12
         time_of_day = "下"
 
+    # Only print the minutes if nonzero
+    if minute > 0:
+        minute_of_day = f"{minute}分鐘"
+    else:
+        minute_of_day = ""
+
     formatted = {
-        "貳、時間：Date": f"貳、時間：{date} ({weekday_mapping[day_of_week]}) {time_of_day}午{hour}時",
+        "貳、時間：Date": f"貳、時間：{date} ({weekday_mapping[day_of_week]}) {time_of_day}午{hour}時{minute_of_day}",
         "肆、審查案件：Number": f"肆、審查案件：{row['案號'] + " " + row['課程名稱']}",
     }
     return formatted
@@ -238,20 +248,27 @@ def main(**kwargs):
     logger = init_logger()
     logger.info(f"Starting program at {datetime.now()}")
 
+    # TODO: Change to support other Excel names
     expert_file = EXPERT_LIST if "EXPERT_LIST" not in kwargs else kwargs["EXPERT_LIST"]
 
-    expert_info = pd.read_excel(expert_file)
-    logger.info(f"Loaded {expert_file}")
+    try:
+        expert_info = pd.read_excel(expert_file)
+        logger.info(f"Loaded {expert_file}")
+    except FileNotFoundError or PermissionError as e:
+        logger.error("Problem opening file: {e}")
+        return
 
-    edit_contract(expert_info)
-    edit_receipt(expert_info)
-    edit_signature_sheet(expert_info)
-    end = time.time()
-    print(f"Finsihed in {end - start} sec.")
+    try:
+        edit_contract(expert_info)
+        edit_receipt(expert_info)
+        edit_signature_sheet(expert_info)
+        end = time.time()
+        logger.info(f"Finsihed in {end - start} sec.")
+    except Exception as e:
+        logger.error(f"Error running main: {e}")
 
 
 if __name__ == "__main__":
-    logger = init_logger()
     run_pipeline = False
     if run_pipeline:
         main()

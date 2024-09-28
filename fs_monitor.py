@@ -1,16 +1,18 @@
 import time
+from datetime import datetime, timedelta
 from typing import Callable, Dict
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from config import TARGET_DIR 
+from config import TARGET_DIR
 
 
 class TriggerPipelineOnInsert(FileSystemEventHandler):
     def __init__(self, callback: Callable, args: Dict):
         self.callback = callback
         self.args = args
+        self.last_modified = datetime.now()
 
     def on_modified(self, event: FileSystemEvent):
         """
@@ -18,6 +20,10 @@ class TriggerPipelineOnInsert(FileSystemEventHandler):
         Args:
             event (FileSystemEvent): Contains information about the file/directory modified.
         """
+        if datetime.now() - self.last_modified < timedelta(seconds=1):
+            return
+        else:
+            self.last_modified = datetime.now()
         filename = event.src_path
         encoded = filename.encode("utf-8").decode("utf-8")
         # Check for *any* excel file dumped inside
@@ -47,7 +53,7 @@ def init_fs_handler(callback: Callable, args: dict = {}):
     except KeyboardInterrupt:
         observer.stop()
     end = time.time()
-    print(f"Finished in {end-start} secs.")
+    print(f"Finished after {end-start} secs.")
 
 
 if __name__ == "__main__":
